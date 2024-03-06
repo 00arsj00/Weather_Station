@@ -17,7 +17,7 @@ void setup() {
 }
 
 void loop() {
- 
+  //lectura de datos en memoria, cadena de temperatura y humedad
   for (int i=0;i<=direc;i+=2)
   {
     temp=mem.read(i);
