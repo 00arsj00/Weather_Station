@@ -9,10 +9,11 @@
 #define DHTPIN 15
 #define DHTTYPE DHT22
 #define BUTTON_PIN 0
+#define RAIN_PIN 33
 DHT dht(DHTPIN, DHTTYPE,22);
 
 //memoria AT24cx
-AT24C256 mem;
+AT24C256 memory;
 //display
 TFT_eSPI tft = TFT_eSPI();
 //reloj
@@ -30,33 +31,35 @@ byte month;
 
 //DateTime now;
 
-int direc=32765;
-int dir;
+int lastDirection=32765;
+int flag= lastDirection - 1;
+int direction;
 
 String msg;
 
-String meses[] = {" ","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"};
+String months[] = {" ","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"};
 
 void setup() {
   pinMode(BUTTON_PIN, INPUT);//se configura pin de boton como entrada
   readDate();
   //lectura de direccion 
-  dir = mem.readInt(direc); 
+  direction = memory.readInt(lastDirection); 
    if (digitalRead(BUTTON_PIN) == LOW) {
     // activacion por boton 
-    msginicio(5000);
-    plantilla();
+    startMsg(5000);
+    homeTemplate();
     readSensors();
     writeDSensors(5000);
-  } else if (minn == 10 || minn == 20 || minn == 30 || minn == 40 || minn == 50 || minn == 0 ) {
-    msginicio(5000);
-    plantilla();
+  } else if (minn % 10 == 0) {
+    startMsg(5000);
+    homeTemplate();
     readSensors();
     writeDSensors(5000);
     saveData(1000);
   }
   esp_sleep_enable_ext0_wakeup((gpio_num_t)BUTTON_PIN, LOW);
   esp_sleep_enable_timer_wakeup(59 * 1000000ULL);
+  attachInterrupt(digitalPinToInterrupt(RAIN_PIN), RainIterrupt, CHANGE);
   esp_deep_sleep_start();
 }
 
@@ -82,33 +85,33 @@ void readSensors(){
   tem = byte(dht.readTemperature());
 
 }
-void writeDSensors(int tiempo){
-  msg = String(day)+"/"+meses[month]+" -- "+String(hour)+":"+String(minn);
+void writeDSensors(int time){
+  msg = String(day)+"/"+months[month]+" -- "+String(hour)+":"+String(minn);
   tft.drawString(msg,50,15,2);
   //se escriben los nuevos datos del sensor en la pantalla
   tft.drawString(String(tem), 160,50, 4); 
   tft.drawString(String(hum), 160,75, 4);
 
-  delay(tiempo);
+  delay(time);
 }
-void saveData(int tiempo){
+void saveData(int time){
   //se escriben los datos en la memoria
   //orden: tem hum mes dia hora minuto 
-  mem.write(dir,tem);
-  mem.write(dir+1,hum);
-  mem.write(dir+2,hour);
-  mem.write(dir+3,minn);
-  mem.write(dir+4,month);
-  mem.write(dir+5,day);
-  dir+=6;
+  memory.write(direction,tem);
+  memory.write(direction+1,hum);
+  memory.write(direction+2,hour);
+  memory.write(direction+3,minn);
+  memory.write(direction+4,month);
+  memory.write(direction+5,day);
+  direction+=6;
 
-  mem.writeInt(direc,dir);
+  memory.writeInt(lastDirection,direction);
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
   tft.drawString("datos guardados", 0, 110, 2);
-  tft.drawString(String((dir-6)/6), 110, 110, 2);
-  delay(tiempo);
+  tft.drawString(String((direction-6)/6), 110, 110, 2);
+  delay(time);
 }
-void msginicio(int tiempo)
+void startMsg(int time)
   {
   tft.init();  
   tft.setRotation(1);
@@ -117,9 +120,31 @@ void msginicio(int tiempo)
   tft.drawString("ESTACION ", 60, 25, 4); 
   tft.drawString("METEREOLOGICA ", 15,50, 4); 
   tft.drawString("V0.3", 90, 75, 4); 
-  delay(tiempo);
+  delay(time);
   }
-void plantilla(){
+  void msgRainDetected(int time)
+  {
+  tft.init();  
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLUE);
+  //forma de gota
+  tft.fillCircle(64, 45, 10, TFT_BLUE); // Parte superior de la gota
+  tft.fillTriangle(64, 55, 54, 75, 74, 75, TFT_BLUE); // Parte inferior de la gota
+  
+  tft.setTextColor(TFT_WHITE, TFT_BLUE);
+  tft.drawString("Lluvia Detectada", 60, 25, 2); 
+  delay(time);
+  }
+  void msgRainUndetected(int time)
+  {
+  tft.init();  
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLUE);
+  tft.setTextColor(TFT_WHITE, TFT_BLUE);
+  tft.drawString("Fin de lluvia", 60, 25, 2); 
+  delay(time);
+  }
+void homeTemplate(){
   //plantilla
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -130,13 +155,19 @@ void plantilla(){
   tft.drawString("Humedad:", 0, 75, 4);
   tft.drawString("%", 210, 75, 4);
 }
-void inicializar(){
 
-}
 void serialmsg(){
   //inicializacion de serial
   Serial.begin(115200);//se uso para verificar su funcionamiento
 
   msg="Date: "+String(day)+"/"+String(month)+" -- "+String(hour)+":"+String(minn)+" -- Tem="+String(tem)+"°C "+" Hum="+String(hum)+"%RH";
   Serial.println(msg);//para verificacion del codigo
+}
+void RainIterrupt(){
+  if (digitalRead(RAIN_PIN) == LOW) {
+    // activacion por boton
+    msgRainUndetected(5000);
+  } else if (digitalRead(RAIN_PIN) == HIGH) {
+    msgRainDetected(5000);
+  }
 }
