@@ -50,7 +50,7 @@ void setup() {
     homeTemplate();
     readSensors();
     writeDSensors(5000);
-  } else if (minn % 10 == 0) {
+  } else if (minn % 5 == 0) {
     startMsg(5000);
     homeTemplate();
     readSensors();
@@ -111,7 +111,7 @@ void saveData(int time){
   tft.drawString(String((direction-6)/6), 110, 110, 2);
   delay(time);
 }
-void startMsg(int time)
+  void startMsg(int time)
   {
   tft.init();  
   tft.setRotation(1);
@@ -124,7 +124,6 @@ void startMsg(int time)
   }
   void msgRainDetected(int time)
   {
-  tft.init();  
   tft.setRotation(1);
   tft.fillScreen(TFT_BLUE);
   //forma de gota
@@ -137,7 +136,6 @@ void startMsg(int time)
   }
   void msgRainUndetected(int time)
   {
-  tft.init();  
   tft.setRotation(1);
   tft.fillScreen(TFT_BLUE);
   tft.setTextColor(TFT_WHITE, TFT_BLUE);
